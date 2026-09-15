@@ -220,6 +220,10 @@ Continuously rotates traffic across exit servers in the rule group
 
 Routes traffic based on a hash of the source IP, ensuring the same client always hits the same exit server
 
+- `Primary/backup` mode (primary_backup)
+
+The first target is the primary. Traffic uses only the primary while it is healthy, fails over to the first healthy backup after the failure threshold, and automatically fails back after the primary passes the recovery threshold and cooldown. Health checks are enabled automatically when this mode is selected.
+
 - Weight = allocation probability
 
 - Failover

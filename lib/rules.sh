@@ -211,6 +211,9 @@ get_balance_info_display() {
         "iphash")
             balance_info=" ${BLUE}[IP哈希]${NC}"
             ;;
+        "primary_backup")
+            balance_info=" ${GREEN}[主备切换]${NC}"
+            ;;
         *)
             balance_info=" ${WHITE}[off]${NC}"
             ;;
@@ -2119,6 +2122,9 @@ switch_balance_mode() {
                     "iphash")
                         balance_display="${BLUE}[IP哈希]${NC}"
                         ;;
+                    "primary_backup")
+                        balance_display="${GREEN}[主备切换]${NC}"
+                        ;;
                     *)
                         balance_display="${WHITE}[off]${NC}"
                         ;;
@@ -2172,9 +2178,10 @@ switch_balance_mode() {
         echo -e "${GREEN}1.${NC} 关闭负载均衡（off）"
         echo -e "${YELLOW}2.${NC} 轮询 (roundrobin)"
         echo -e "${BLUE}3.${NC} IP哈希 (iphash)"
+        echo -e "${GREEN}4.${NC} 主备切换 (primary_backup，列表首个为主节点)"
         echo ""
 
-        read -p "请输入选择 [1-3]: " mode_choice
+        read -p "请输入选择 [1-4]: " mode_choice
 
         local new_mode=""
         local mode_display=""
@@ -2191,6 +2198,10 @@ switch_balance_mode() {
                 new_mode="iphash"
                 mode_display="IP哈希"
                 ;;
+            4)
+                new_mode="primary_backup"
+                mode_display="主备切换"
+                ;;
             *)
                 echo -e "${RED}无效选择${NC}"
                 read -p "按回车键继续..."
@@ -2204,6 +2215,13 @@ switch_balance_mode() {
             if [ -f "$rule_file" ]; then
                 if read_rule_file "$rule_file" && [ "$RULE_ROLE" = "1" ] && [ "$LISTEN_PORT" = "$selected_port" ]; then
                     sed -i "s/^BALANCE_MODE=.*/BALANCE_MODE=\"$new_mode\"/" "$rule_file"
+                    if [ "$new_mode" = "primary_backup" ]; then
+                        if grep -q "^FAILOVER_ENABLED=" "$rule_file"; then
+                            sed -i 's/^FAILOVER_ENABLED=.*/FAILOVER_ENABLED="true"/' "$rule_file"
+                        else
+                            echo 'FAILOVER_ENABLED="true"' >> "$rule_file"
+                        fi
+                    fi
                     updated_count=$((updated_count + 1))
                 fi
             fi
@@ -2211,6 +2229,14 @@ switch_balance_mode() {
 
         if [ $updated_count -gt 0 ]; then
             echo -e "${GREEN}✓ 已将端口 $selected_port 的 $updated_count 个规则的负载均衡模式更新为: $mode_display${NC}"
+            if [ "$new_mode" = "primary_backup" ]; then
+                echo -e "${BLUE}正在启动主备健康检查...${NC}"
+                if download_failover_script; then
+                    bash /etc/realm/xwFailover.sh start
+                else
+                    echo -e "${RED}✗ 健康检查脚本下载失败，主备切换暂不可用${NC}"
+                fi
+            fi
             echo -e "${YELLOW}正在重启服务以应用更改...${NC}"
 
             # 重启realm服务
@@ -2299,7 +2325,7 @@ weight_management_menu() {
             local balance_mode="${port_balance_modes[$port_key]}"
 
             # 只显示有多个目标服务器的端口组
-            if [ "$target_count" -gt 1 ] && [ "$balance_mode" != "off" ] && [ -n "$balance_mode" ]; then
+            if [ "$target_count" -gt 1 ] && [ "$balance_mode" != "off" ] && [ "$balance_mode" != "primary_backup" ] && [ -n "$balance_mode" ]; then
                 if [ "$has_balance_rules" = false ]; then
                     echo "请选择要配置权重的规则组 (仅显示多目标服务器的负载均衡规则):"
                     has_balance_rules=true

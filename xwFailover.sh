@@ -8,7 +8,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 WHITE='\033[1;37m'
 NC='\033[0m'
-SCRIPT_VERSION="1.0.0"
+SCRIPT_VERSION="1.1.0"
 
 RULES_DIR="/etc/realm/rules"
 HEALTH_STATUS_FILE="/etc/realm/health/health_status.conf"
@@ -203,7 +203,7 @@ toggle_failover_mode() {
             echo ""
             echo -e "${BLUE}故障转移的前提条件：${NC}"
             echo -e "${BLUE}  1. 规则类型为中转服务器${NC}"
-            echo -e "${BLUE}  2. 已启用负载均衡模式（轮询或IP哈希）${NC}"
+            echo -e "${BLUE}  2. 已启用多目标模式（轮询、IP哈希或主备切换）${NC}"
             echo -e "${BLUE}  3. 有多个目标服务器${NC}"
             echo ""
             read -p "按回车键返回..."

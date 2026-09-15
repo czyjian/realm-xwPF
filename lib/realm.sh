@@ -305,7 +305,7 @@ generate_endpoints_from_rules() {
 
     # 健康状态读取（直接读取健康状态文件）
     declare -A health_status
-    local health_status_file="/etc/realm/health/health_status.conf"
+    local health_status_file="${REALM_HEALTH_STATUS_FILE:-/etc/realm/health/health_status.conf}"
 
     if [ -f "$health_status_file" ]; then
         while read -r line; do
@@ -328,6 +328,7 @@ generate_endpoints_from_rules() {
     declare -A port_weights
     declare -A port_roles
     declare -A port_protocols
+    declare -A port_balance_modes
 
     # 第一步：收集所有启用的规则并按端口分组（不进行故障转移过滤）
     declare -A port_rule_files
@@ -353,6 +354,7 @@ generate_endpoints_from_rules() {
                     # 存储权重配置和角色信息
                     port_weights[$port_key]="$WEIGHTS"
                     port_roles[$port_key]="$RULE_ROLE"
+                    port_balance_modes[$port_key]="${BALANCE_MODE:-off}"
                 elif [ "${port_roles[$port_key]}" != "$RULE_ROLE" ]; then
                     # 检测到同一端口有不同角色的规则，跳过此规则
                     echo -e "${YELLOW}警告: 端口 $port_key 已被角色 ${port_roles[$port_key]} 的规则占用，跳过角色 $RULE_ROLE 的规则${NC}" >&2
@@ -437,26 +439,45 @@ generate_endpoints_from_rules() {
             local filtered_targets=""
             local filtered_indices=()
 
-            # 记录健康节点的索引位置
-            for i in "${!all_targets[@]}"; do
-                local target="${all_targets[i]}"
-                local host="${target%:*}"
-                local node_status="${health_status[$host]:-healthy}"
+            # 主备模式始终只向 Realm 暴露一个目标。目标列表中的第一个节点
+            # 是主节点；主节点恢复健康后会自然回切到它。
+            if [ "${port_balance_modes[$port_key]}" = "primary_backup" ]; then
+                local selected_index=0
 
-                if [ "$node_status" != "failed" ]; then
-                    if [ -n "$filtered_targets" ]; then
-                        filtered_targets="$filtered_targets,$target"
-                    else
-                        filtered_targets="$target"
+                for i in "${!all_targets[@]}"; do
+                    local candidate="${all_targets[i]}"
+                    local candidate_host="${candidate%:*}"
+                    if [ "${health_status[$candidate_host]:-healthy}" != "failed" ]; then
+                        selected_index=$i
+                        break
                     fi
-                    filtered_indices+=($i)
-                fi
-            done
+                done
 
-            # 如果所有节点都故障，保留第一个节点避免服务完全中断
-            if [ -z "$filtered_targets" ]; then
-                filtered_targets="${all_targets[0]}"
-                filtered_indices=(0)
+                # 全部故障时保留主节点，避免生成无目标的无效配置。
+                filtered_targets="${all_targets[$selected_index]}"
+                filtered_indices=("$selected_index")
+            else
+                # 记录健康节点的索引位置
+                for i in "${!all_targets[@]}"; do
+                    local target="${all_targets[i]}"
+                    local host="${target%:*}"
+                    local node_status="${health_status[$host]:-healthy}"
+
+                    if [ "$node_status" != "failed" ]; then
+                        if [ -n "$filtered_targets" ]; then
+                            filtered_targets="$filtered_targets,$target"
+                        else
+                            filtered_targets="$target"
+                        fi
+                        filtered_indices+=("$i")
+                    fi
+                done
+
+                # 如果所有节点都故障，保留第一个节点避免服务完全中断
+                if [ -z "$filtered_targets" ]; then
+                    filtered_targets="${all_targets[0]}"
+                    filtered_indices=(0)
+                fi
             fi
 
             # 更新端口组为过滤后的目标
@@ -559,7 +580,7 @@ generate_endpoints_from_rules() {
         fi
 
         # 添加负载均衡配置（如果有多个目标且设置了负载均衡）
-        if [ -n "$extra_remotes" ] && [ -n "$balance_mode" ] && [ "$balance_mode" != "off" ]; then
+        if [ -n "$extra_remotes" ] && [ -n "$balance_mode" ] && [ "$balance_mode" != "off" ] && [ "$balance_mode" != "primary_backup" ]; then
             # 生成权重配置
             local weight_config=""
             local rule_weights="${port_weights[$port_key]}"
