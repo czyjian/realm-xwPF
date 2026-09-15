@@ -1962,7 +1962,7 @@ load_balance_management_menu() {
                     # 构建故障转移状态信息
                     local failover_info=""
                     if [ "$balance_mode" != "off" ] && [ "${port_failover_status[$port_key]}" = "true" ]; then
-                        local health_status_file="/etc/realm/health/health_status.conf"
+                        local health_status_file="${REALM_HEALTH_STATUS_FILE:-/etc/realm/health/health_status.conf}"
                         local node_status="healthy"
 
                         if [ -f "$health_status_file" ]; then
@@ -1981,7 +1981,11 @@ load_balance_management_menu() {
                     fi
 
                     # 显示服务器信息（只在负载均衡模式下显示权重）
-                    if [ "$balance_mode" != "off" ]; then
+                    if [ "$balance_mode" = "primary_backup" ]; then
+                        local target_role="备用节点"
+                        [ "$i" -eq 0 ] && target_role="主节点"
+                        echo -e "    ${BLUE}$((i+1)).${NC} $target ${GREEN}[$target_role]${NC}$failover_info"
+                    elif [ "$balance_mode" != "off" ]; then
                         echo -e "    ${BLUE}$((i+1)).${NC} $target ${GREEN}[权重: $current_weight]${NC} ${BLUE}($percentage%)${NC}$failover_info"
                     else
                         echo -e "    ${BLUE}$((i+1)).${NC} $target$failover_info"
@@ -2004,10 +2008,11 @@ load_balance_management_menu() {
         echo -e "${GREEN}1.${NC} 切换负载均衡模式"
         echo -e "${BLUE}2.${NC} 权重配置管理"
         echo -e "${YELLOW}3.${NC} 开启/关闭故障转移"
+        echo -e "${GREEN}4.${NC} 配置主备切换"
         echo -e "${RED}0.${NC} 返回上级菜单"
         echo ""
 
-        read -p "请输入选择 [0-3]: " choice
+        read -p "请输入选择 [0-4]: " choice
         echo ""
 
         case $choice in
@@ -2023,12 +2028,15 @@ load_balance_management_menu() {
                 # 开启/关闭故障转移
                 failover_management_menu
                 ;;
+            4)
+                switch_balance_mode "primary_backup"
+                ;;
             0)
                 # 返回上级菜单
                 break
                 ;;
             *)
-                echo -e "${RED}无效选择，请输入 0-3${NC}"
+                echo -e "${RED}无效选择，请输入 0-4${NC}"
                 read -p "按回车键继续..."
                 ;;
         esac
@@ -2037,6 +2045,7 @@ load_balance_management_menu() {
 
 # 切换负载均衡模式（按端口分组管理）
 switch_balance_mode() {
+    local preset_mode="${1:-}"
     while true; do
         clear
         echo -e "${YELLOW}=== 切换负载均衡模式 ===${NC}"
@@ -2181,7 +2190,11 @@ switch_balance_mode() {
         echo -e "${GREEN}4.${NC} 主备切换 (primary_backup，列表首个为主节点)"
         echo ""
 
-        read -p "请输入选择 [1-4]: " mode_choice
+        if [ "$preset_mode" = "primary_backup" ]; then
+            mode_choice=4
+        else
+            read -p "请输入选择 [1-4]: " mode_choice
+        fi
 
         local new_mode=""
         local mode_display=""
