@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SCRIPT_VERSION="v2.3.3"
+SCRIPT_VERSION="v2.3.4"
 REALM_VERSION="v2.9.6"
 
 NAT_LISTEN_PORT=""
@@ -207,7 +207,7 @@ manage_dependencies() {
         if [ "$mode" = "check" ]; then
             echo -e "${RED}错误: 缺少必备工具: ${missing_tools[*]}${NC}"
             echo -e "${YELLOW}请先选择菜单选项1进行安装，或手动运行安装命令:${NC}"
-            echo -e "${BLUE}curl -fsSL https://raw.githubusercontent.com/zywe03/realm-xwPF/main/xwPF.sh | sudo bash -s install${NC}"
+            echo -e "${BLUE}curl -fsSL ${REPO_RAW_URL}/xwPF.sh | sudo bash -s install${NC}"
             exit 1
         elif [ "$mode" = "install" ]; then
             echo -e "${YELLOW}需要安装以下工具: ${missing_tools[*]}${NC}"

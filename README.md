@@ -82,13 +82,13 @@ DTAG
 ### 一键安装
 
 ```bash
-wget -qO- https://raw.githubusercontent.com/zywe03/realm-xwPF/main/xwPF.sh | sudo bash -s install
+wget -qO- https://raw.githubusercontent.com/czyjian/realm-xwPF/main/xwPF.sh | sudo bash -s install
 ```
 
 ### 网络受限使用加速源,一键安装
 
 ```bash
-wget -qO- https://v6.gh-proxy.org/https://raw.githubusercontent.com/zywe03/realm-xwPF/main/xwPF.sh | sudo bash -s install
+wget -qO- https://v6.gh-proxy.org/https://raw.githubusercontent.com/czyjian/realm-xwPF/main/xwPF.sh | sudo bash -s install
 ```
 若加速源失效，可多次重试或更换其他具有内置加速功能的代理源
 
@@ -101,8 +101,8 @@ wget -qO- https://v6.gh-proxy.org/https://raw.githubusercontent.com/zywe03/realm
 
 **1. 在有网络的设备上下载以下文件**
 
-- **主脚本**：[xwPF.sh](https://github.com/zywe03/realm-xwPF/raw/main/xwPF.sh)
-- **模块文件**（全部需要）：https://github.com/zywe03/realm-xwPF/tree/main/lib
+- **主脚本**：[xwPF.sh](https://github.com/czyjian/realm-xwPF/raw/main/xwPF.sh)
+- **模块文件**（全部需要）：https://github.com/czyjian/realm-xwPF/tree/main/lib
 
 - **Realm 程序**（根据系统架构选择）：
 

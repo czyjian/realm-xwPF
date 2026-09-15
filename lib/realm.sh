@@ -871,7 +871,7 @@ smart_install() {
     if [ "${_SKIP_SCRIPT_UPDATE:-}" != "1" ]; then
         echo -e "${YELLOW}正在检查脚本更新...${NC}"
         local remote_ver=$(curl -sL --connect-timeout $SHORT_CONNECT_TIMEOUT --max-time $SHORT_MAX_TIMEOUT \
-            "https://raw.githubusercontent.com/zywe03/realm-xwPF/main/lib/core.sh" 2>/dev/null | \
+            "$REPO_RAW_URL/lib/core.sh" 2>/dev/null | \
             grep -E '^SCRIPT_VERSION=' | head -1 | cut -d'"' -f2)
 
         if [ -n "$remote_ver" ] && [ "$remote_ver" != "$SCRIPT_VERSION" ]; then
